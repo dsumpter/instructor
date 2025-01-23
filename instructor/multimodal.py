@@ -19,6 +19,7 @@ from urllib.parse import urlparse
 import mimetypes
 import requests
 from pydantic import BaseModel, Field
+from fastapi import UploadFile
 from .mode import Mode
 
 F = TypeVar("F", bound=Callable[..., Any])
@@ -161,6 +162,19 @@ class Image(BaseModel):
 
         data = base64.b64encode(path.read_bytes()).decode("utf-8")
         return cls(source=path, media_type=media_type, data=data)
+
+    @classmethod
+    def from_upload_file(cls, file: UploadFile) -> Image:
+        """Create an Image from a FastAPI UploadFile."""
+        try:
+            contents = file.file.read()
+            media_type = file.content_type
+            if media_type not in VALID_MIME_TYPES:
+                raise ValueError(f"Unsupported image format: {media_type}")
+            data = base64.b64encode(contents).decode("utf-8")
+            return cls(source=file.filename, media_type=media_type, data=data)
+        except Exception as e:
+            raise ValueError(f"Error processing uploaded file: {e}")
 
     @staticmethod
     @lru_cache

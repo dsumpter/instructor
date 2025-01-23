@@ -3,6 +3,8 @@ from pathlib import Path
 from instructor.multimodal import Image, convert_contents, convert_messages
 from instructor.mode import Mode
 from unittest.mock import patch, MagicMock
+from fastapi import UploadFile
+from io import BytesIO
 
 
 @pytest.fixture
@@ -34,6 +36,21 @@ def test_image_from_path(tmp_path: Path):
     assert image.media_type == "image/jpeg"
     assert image.data is not None
 
+
+def create_upload_file(file_path: Path, content_type: str) -> UploadFile:
+    with open(file_path, "rb") as f:
+        file_content = f.read()
+    return UploadFile(filename=file_path.name, file=BytesIO(file_content), content_type=content_type)
+
+
+def test_from_upload_file(tmp_path: Path):
+    image_path = tmp_path / "test_image.png"
+    image_path.write_bytes(b"fake image data")
+    upload_file = create_upload_file(image_path, "image/png")
+    image = Image.from_upload_file(upload_file)
+    assert image.media_type == "image/png"
+    assert image.source == "test_image.png"
+    assert image.data is not None
 
 @pytest.mark.skip(reason="Needs to download image")
 def test_image_to_anthropic():
